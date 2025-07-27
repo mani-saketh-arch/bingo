@@ -1,0 +1,964 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dev-War Bingo - AI Warriors Edition</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #f5a67a, #f2c8a8);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: #f5a67a;
+            color: white;
+            text-align: center;
+            padding: 30px 20px;
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            font-weight: bold;
+            letter-spacing: 8px;
+            margin-bottom: 10px;
+        }
+
+        .header h2 {
+            font-size: 1.8rem;
+            font-weight: bold;
+            letter-spacing: 4px;
+            margin-bottom: 20px;
+        }
+
+        .header h3 {
+            font-size: 3rem;
+            font-weight: bold;
+            letter-spacing: 6px;
+            margin-bottom: 10px;
+            color: #ff9999;
+        }
+
+        .header h4 {
+            font-size: 2.2rem;
+            font-weight: bold;
+            letter-spacing: 4px;
+        }
+
+        .game-setup {
+            padding: 20px;
+            text-align: center;
+            background: #fdf2ed;
+        }
+
+        .mode-selection {
+            display: block;
+        }
+
+        .form-section {
+            display: none;
+            margin-top: 20px;
+        }
+
+        .game-container {
+            display: none;
+            padding: 20px;
+        }
+
+        .player-info {
+            background: #fdf2ed;
+            padding: 15px;
+            margin-bottom: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .player-name {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #f5a67a;
+            margin-bottom: 10px;
+        }
+
+        .game-id {
+            font-size: 1rem;
+            color: #666;
+            margin-bottom: 10px;
+        }
+
+        .players-list {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin-top: 15px;
+        }
+
+        .player-status {
+            padding: 8px 15px;
+            background: #f5a67a;
+            color: white;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            position: relative;
+        }
+
+        .player-status.current-player {
+            background: #4CAF50;
+        }
+
+        .player-status.opponent {
+            background: #ff6b6b;
+        }
+
+        .player-status.winner {
+            background: #FFD700;
+            color: #333;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #4CAF50;
+            color: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            font-weight: bold;
+            z-index: 1001;
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        .notification.error {
+            background: #ff6b6b;
+        }
+
+        .input-group {
+            margin: 15px 0;
+        }
+
+        .input-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #f5a67a;
+        }
+
+        .input-group input {
+            width: 100%;
+            max-width: 300px;
+            padding: 12px;
+            border: 2px solid #f5a67a;
+            border-radius: 8px;
+            font-size: 1rem;
+            text-align: center;
+        }
+
+        .btn {
+            display: inline-block;
+            margin: 10px;
+            padding: 15px 30px;
+            background: #f5a67a;
+            color: white;
+            text-decoration: none;
+            border-radius: 10px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            border: none;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover {
+            background: #e89660;
+            transform: translateY(-2px);
+        }
+
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-small {
+            padding: 8px 16px;
+            font-size: 1rem;
+            margin: 5px;
+        }
+
+        .btn-secondary {
+            background: #666;
+        }
+
+        .btn-secondary:hover {
+            background: #555;
+        }
+
+        .game-controls {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .sync-status {
+            background: #e8f5e8;
+            color: #2e7d32;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            margin: 10px 0;
+            display: inline-block;
+        }
+
+        .sync-status.disconnected {
+            background: #ffebee;
+            color: #c62828;
+        }
+
+        .bingo-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .bingo-square {
+            aspect-ratio: 1;
+            border: 3px solid #f5a67a;
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            font-size: 0.9rem;
+            font-weight: bold;
+            color: #333;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            padding: 8px;
+            background: white;
+            position: relative;
+        }
+
+        .bingo-square:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+
+        .bingo-square.my-mark {
+            background: #f5a67a;
+            color: white;
+            border-color: #e89660;
+        }
+
+        .bingo-square.opponent-mark {
+            background: #ff6b6b;
+            color: white;
+            border-color: #ff5252;
+        }
+
+        .bingo-square.both-marked {
+            background: linear-gradient(45deg, #f5a67a 50%, #ff6b6b 50%);
+            color: white;
+            border-color: #333;
+        }
+
+        .status {
+            text-align: center;
+            margin: 20px 0;
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+
+        .win-message, .lose-message {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            padding: 30px;
+            border-radius: 15px;
+            font-size: 2rem;
+            font-weight: bold;
+            text-align: center;
+            z-index: 1000;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+        }
+
+        .win-message {
+            background: #4CAF50;
+        }
+
+        .lose-message {
+            background: #ff6b6b;
+        }
+
+        .overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 999;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.8rem;
+                letter-spacing: 4px;
+            }
+            
+            .header h2 {
+                font-size: 1.3rem;
+                letter-spacing: 2px;
+            }
+            
+            .header h3 {
+                font-size: 2rem;
+                letter-spacing: 3px;
+            }
+            
+            .header h4 {
+                font-size: 1.5rem;
+                letter-spacing: 2px;
+            }
+
+            .bingo-square {
+                font-size: 0.7rem;
+                padding: 4px;
+            }
+
+            .bingo-grid {
+                gap: 5px;
+                padding: 10px;
+            }
+
+            .players-list {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>INNODAYVOYAGERS</h1>
+            <h2>SURGE 2025 — PHASE 1 SPRINT</h2>
+            <h3>DEV-WAR BINGO</h3>
+            <h4>AI WARRIORS EDITION</h4>
+        </div>
+
+        <div class="game-setup" id="gameSetup">
+            <!-- Mode Selection -->
+            <div class="mode-selection" id="modeSelection">
+                <h3 style="margin-bottom: 20px; color: #f5a67a;">Choose Your Action</h3>
+                <button class="btn" onclick="showCreateGameForm()">🆕 Create New Game</button>
+                <button class="btn" onclick="showJoinGameForm()">🎮 Join Existing Game</button>
+            </div>
+
+            <!-- Create Game Form -->
+            <div class="form-section" id="createGameForm">
+                <h3 style="margin-bottom: 20px; color: #f5a67a;">Create New Game</h3>
+                <div class="input-group">
+                    <label for="createPlayerName">Your Name:</label>
+                    <input type="text" id="createPlayerName" placeholder="Enter your name" maxlength="20">
+                </div>
+                <button class="btn" onclick="createGame()">🚀 Start Game</button>
+                <button class="btn btn-secondary" onclick="goBackToModeSelection()">← Back</button>
+            </div>
+
+            <!-- Join Game Form -->
+            <div class="form-section" id="joinGameForm">
+                <h3 style="margin-bottom: 20px; color: #f5a67a;">Join Existing Game</h3>
+                <div class="input-group">
+                    <label for="joinPlayerName">Your Name:</label>
+                    <input type="text" id="joinPlayerName" placeholder="Enter your name" maxlength="20">
+                </div>
+                <div class="input-group">
+                    <label for="gameCode">Game Code:</label>
+                    <input type="text" id="gameCode" placeholder="Enter 6-letter game code" maxlength="6" style="text-transform: uppercase;">
+                </div>
+                <button class="btn" onclick="joinGame()">🎯 Join Game</button>
+                <button class="btn btn-secondary" onclick="goBackToModeSelection()">← Back</button>
+            </div>
+        </div>
+
+        <div class="game-container" id="gameContainer">
+            <div class="player-info">
+                <div class="player-name" id="currentPlayerName"></div>
+                <div class="game-id" id="currentGameId"></div>
+                <div class="sync-status" id="syncStatus">🟢 Connected</div>
+                <div class="players-list" id="playersList"></div>
+            </div>
+
+            <div class="game-controls">
+                <button class="btn btn-small" onclick="resetGame()">🔄 Reset Game</button>
+                <button class="btn btn-small" onclick="leaveGame()">🚪 Leave Game</button>
+                <div class="status" id="statusText">Waiting for players...</div>
+            </div>
+
+            <div class="bingo-grid" id="bingoGrid"></div>
+        </div>
+    </div>
+
+    <div class="overlay" id="overlay"></div>
+    <div class="win-message" id="winMessage">
+        🎉 BINGO! 🎉<br>
+        <small style="font-size: 1rem;">You Win!</small>
+        <br><br>
+        <button class="btn btn-small" onclick="hideMessages()">Play Again</button>
+    </div>
+    <div class="lose-message" id="loseMessage">
+        😢 Game Over<br>
+        <small style="font-size: 1rem;">Your opponent won!</small>
+        <br><br>
+        <button class="btn btn-small" onclick="hideMessages()">Play Again</button>
+    </div>
+
+    <!-- Notification popup -->
+    <div class="notification" id="notification"></div>
+
+    <script>
+        let currentPlayer = null;
+        let currentGameId = null;
+        let gameState = {
+            players: {},
+            gameStarted: false,
+            winner: null,
+            lastUpdate: Date.now()
+        };
+        let broadcastChannel = null;
+        let syncInterval = null;
+
+        const bingoSquares = [
+            "100+ GitHub Commits",
+            "Built 5+ Projects", 
+            "Python Pro?",
+            "Hosted a Tech Session",
+            "Used TensorFlow or PyTorch",
+            "Attended 3+ Conferences",
+            "Frontend + Backend Projects",
+            "AI-based App Deployed",
+            "Spoke at an Event",
+            "Won a Hackathon",
+            "GitHub Starred Projects",
+            "Real Users Using Your App",
+            "Developed a Chatbot",
+            "DSA 150+ Problems Solved",
+            "Blogger / Wrote Tech Article",
+            "Participated in 3+ Hackathons",
+            "Contributed to Open Source",
+            "Published Research Paper",
+            "Created Personal Portfolio",
+            "Used Streamlit / Flask / Django/FastAPI",
+            "ML Model Trained on Custom Dataset",
+            "Made a YouTube Tutorial",
+            "Presented at College Event",
+            "GitHub Repos 15+",
+            "Used Hugging Face"
+        ];
+
+        function showNotification(message, isError = false) {
+            const notification = document.getElementById('notification');
+            notification.textContent = message;
+            notification.className = `notification ${isError ? 'error' : ''} show`;
+            
+            setTimeout(() => {
+                notification.classList.remove('show');
+            }, 3000);
+        }
+
+        function showCreateGameForm() {
+            document.getElementById('modeSelection').style.display = 'none';
+            document.getElementById('createGameForm').style.display = 'block';
+            document.getElementById('createPlayerName').focus();
+        }
+
+        function showJoinGameForm() {
+            document.getElementById('modeSelection').style.display = 'none';
+            document.getElementById('joinGameForm').style.display = 'block';
+            document.getElementById('joinPlayerName').focus();
+        }
+
+        function goBackToModeSelection() {
+            document.getElementById('createGameForm').style.display = 'none';
+            document.getElementById('joinGameForm').style.display = 'none';
+            document.getElementById('modeSelection').style.display = 'block';
+            
+            // Clear forms
+            document.getElementById('createPlayerName').value = '';
+            document.getElementById('joinPlayerName').value = '';
+            document.getElementById('gameCode').value = '';
+        }
+
+        function generateGameId() {
+            return Math.random().toString(36).substring(2, 8).toUpperCase();
+        }
+
+        function createGame() {
+            const playerName = document.getElementById('createPlayerName').value.trim();
+            if (!playerName) {
+                showNotification('Please enter your name', true);
+                return;
+            }
+
+            currentGameId = generateGameId();
+            currentPlayer = playerName;
+            
+            gameState = {
+                players: {},
+                gameStarted: true,
+                winner: null,
+                lastUpdate: Date.now()
+            };
+            gameState.players[currentPlayer] = { 
+                markedSquares: [], 
+                isWinner: false, 
+                joinedAt: Date.now() 
+            };
+
+            saveGameState();
+            setupBroadcastChannel();
+            startGame();
+            showNotification(`Game created! Code: ${currentGameId}`);
+        }
+
+        function joinGame() {
+            const playerName = document.getElementById('joinPlayerName').value.trim();
+            const gameCode = document.getElementById('gameCode').value.trim().toUpperCase();
+            
+            if (!playerName || !gameCode) {
+                showNotification('Please enter both your name and game code', true);
+                return;
+            }
+
+            if (gameCode.length !== 6) {
+                showNotification('Game code must be 6 characters', true);
+                return;
+            }
+
+            currentPlayer = playerName;
+            currentGameId = gameCode;
+
+            // Try to load existing game
+            const existingGame = loadGameState();
+            if (existingGame) {
+                gameState = existingGame;
+                showNotification(`Joining game ${currentGameId}...`);
+                
+                // Add current player if not already in game
+                if (!gameState.players[currentPlayer]) {
+                    gameState.players[currentPlayer] = { 
+                        markedSquares: [], 
+                        isWinner: false, 
+                        joinedAt: Date.now() 
+                    };
+                    showNotification(`Successfully joined game with ${Object.keys(gameState.players).length - 1} other player(s)!`);
+                } else {
+                    showNotification(`Rejoined game ${currentGameId}!`);
+                }
+            } else {
+                // Game doesn't exist, create it
+                gameState = {
+                    players: {},
+                    gameStarted: true,
+                    winner: null,
+                    lastUpdate: Date.now()
+                };
+                gameState.players[currentPlayer] = { 
+                    markedSquares: [], 
+                    isWinner: false, 
+                    joinedAt: Date.now() 
+                };
+                showNotification(`Game ${currentGameId} not found, creating new one`);
+            }
+
+            saveGameState();
+            setupBroadcastChannel();
+            startGame();
+            
+            // Force immediate sync check
+            setTimeout(syncGameState, 100);
+        }
+
+        function setupBroadcastChannel() {
+            if (broadcastChannel) {
+                broadcastChannel.close();
+            }
+            
+            // BroadcastChannel for same-device sync only
+            try {
+                broadcastChannel = new BroadcastChannel(`bingo-game-${currentGameId}`);
+                broadcastChannel.onmessage = (event) => {
+                    const { type, data } = event.data;
+                    
+                    if (type === 'gameUpdate') {
+                        handleGameUpdate(data);
+                    } else if (type === 'playerJoined') {
+                        if (data.playerName !== currentPlayer) {
+                            showNotification(`${data.playerName} joined the game!`);
+                            gameState.players[data.playerName] = data.playerData;
+                            saveGameState();
+                            updateUI();
+                        }
+                    }
+                };
+            } catch (e) {
+                console.log('BroadcastChannel not supported, using localStorage polling only');
+            }
+
+            // Primary sync mechanism - localStorage polling
+            if (syncInterval) clearInterval(syncInterval);
+            syncInterval = setInterval(syncGameState, 500); // Check every 500ms for faster sync
+        }
+
+        function handleGameUpdate(newGameState) {
+            const oldPlayers = Object.keys(gameState.players);
+            const oldPlayerCount = oldPlayers.length;
+            
+            gameState = newGameState;
+            const newPlayers = Object.keys(gameState.players);
+            const newPlayerCount = newPlayers.length;
+            
+            // Check for new players
+            const joinedPlayers = newPlayers.filter(p => !oldPlayers.includes(p) && p !== currentPlayer);
+            if (joinedPlayers.length > 0) {
+                showNotification(`${joinedPlayers.join(', ')} joined the game!`);
+            }
+            
+            // Check for players who left
+            const leftPlayers = oldPlayers.filter(p => !newPlayers.includes(p) && p !== currentPlayer);
+            if (leftPlayers.length > 0) {
+                showNotification(`${leftPlayers.join(', ')} left the game`, true);
+            }
+            
+            updateUI();
+        }
+
+        function broadcastGameUpdate() {
+            gameState.lastUpdate = Date.now();
+            saveGameState(); // Save first
+            
+            // Then broadcast if available
+            if (broadcastChannel) {
+                try {
+                    broadcastChannel.postMessage({
+                        type: 'gameUpdate',
+                        data: gameState
+                    });
+                } catch (e) {
+                    console.log('Broadcast failed, relying on localStorage sync');
+                }
+            }
+        }
+
+        function broadcastPlayerJoined() {
+            saveGameState(); // Save first
+            
+            if (broadcastChannel) {
+                try {
+                    broadcastChannel.postMessage({
+                        type: 'playerJoined',
+                        data: {
+                            playerName: currentPlayer,
+                            playerData: gameState.players[currentPlayer]
+                        }
+                    });
+                } catch (e) {
+                    console.log('Broadcast failed, relying on localStorage sync');
+                }
+            }
+        }
+
+        function saveGameState() {
+            gameState.lastUpdate = Date.now();
+            localStorage.setItem(`bingo-game-${currentGameId}`, JSON.stringify(gameState));
+        }
+
+        function loadGameState() {
+            const saved = localStorage.getItem(`bingo-game-${currentGameId}`);
+            return saved ? JSON.parse(saved) : null;
+        }
+
+        function syncGameState() {
+            const latestState = loadGameState();
+            if (latestState && latestState.lastUpdate > gameState.lastUpdate) {
+                console.log('Syncing game state...', latestState);
+                handleGameUpdate(latestState);
+                updateSyncStatus(true);
+            } else {
+                // No updates, but we're still connected
+                updateSyncStatus(true);
+            }
+        }
+
+        function updateSyncStatus(connected) {
+            const syncStatus = document.getElementById('syncStatus');
+            if (connected) {
+                syncStatus.textContent = '🟢 Connected';
+                syncStatus.className = 'sync-status';
+            } else {
+                syncStatus.textContent = '🔴 Disconnected';
+                syncStatus.className = 'sync-status disconnected';
+            }
+        }
+
+        function startGame() {
+            document.getElementById('gameSetup').style.display = 'none';
+            document.getElementById('gameContainer').style.display = 'block';
+            
+            document.getElementById('currentPlayerName').textContent = `Player: ${currentPlayer}`;
+            document.getElementById('currentGameId').textContent = `Game Code: ${currentGameId}`;
+            
+            createBingoGrid();
+            updateUI();
+        }
+
+        function createBingoGrid() {
+            const grid = document.getElementById('bingoGrid');
+            grid.innerHTML = '';
+            
+            bingoSquares.forEach((text, index) => {
+                const square = document.createElement('div');
+                square.className = 'bingo-square';
+                square.textContent = text;
+                square.dataset.index = index;
+                
+                square.addEventListener('click', () => handleSquareClick(index));
+                grid.appendChild(square);
+            });
+        }
+
+        function handleSquareClick(index) {
+            if (gameState.winner) return;
+
+            const playerData = gameState.players[currentPlayer];
+            const markedSquares = playerData.markedSquares;
+            
+            if (markedSquares.includes(index)) {
+                // Unmark square
+                const squareIndex = markedSquares.indexOf(index);
+                markedSquares.splice(squareIndex, 1);
+            } else {
+                // Mark square
+                markedSquares.push(index);
+            }
+
+            saveGameState();
+            broadcastGameUpdate();
+            
+            if (checkForWin(markedSquares)) {
+                gameState.winner = currentPlayer;
+                gameState.players[currentPlayer].isWinner = true;
+                saveGameState();
+                broadcastGameUpdate();
+                showWinMessage();
+                showNotification('🎉 You won!');
+            }
+            
+            updateUI();
+        }
+
+        function updateUI() {
+            // Update players list
+            const playersList = document.getElementById('playersList');
+            playersList.innerHTML = '';
+            
+            for (const [playerName, playerData] of Object.entries(gameState.players)) {
+                const playerDiv = document.createElement('div');
+                let className = 'player-status';
+                
+                if (playerName === currentPlayer) {
+                    className += ' current-player';
+                } else {
+                    className += ' opponent';
+                }
+                
+                if (playerData.isWinner) {
+                    className += ' winner';
+                }
+                
+                playerDiv.className = className;
+                playerDiv.textContent = playerData.isWinner ? `👑 ${playerName}` : playerName;
+                playersList.appendChild(playerDiv);
+            }
+
+            // Update grid - FIXED VISUAL FEEDBACK
+            const squares = document.querySelectorAll('.bingo-square');
+            squares.forEach((square, index) => {
+                square.classList.remove('my-mark', 'opponent-mark', 'both-marked');
+                
+                let myMark = gameState.players[currentPlayer]?.markedSquares.includes(index) || false;
+                let opponentMark = false;
+                let opponentNames = [];
+                
+                // Check if any opponent marked this square
+                for (const [playerName, playerData] of Object.entries(gameState.players)) {
+                    if (playerName !== currentPlayer && playerData.markedSquares.includes(index)) {
+                        opponentMark = true;
+                        opponentNames.push(playerName);
+                    }
+                }
+                
+                // Apply appropriate class with better visual distinction
+                if (myMark && opponentMark) {
+                    square.classList.add('both-marked');
+                    square.title = `You and ${opponentNames.join(', ')} marked this`;
+                } else if (myMark) {
+                    square.classList.add('my-mark');
+                    square.title = 'You marked this';
+                } else if (opponentMark) {
+                    square.classList.add('opponent-mark');
+                    square.title = `${opponentNames.join(', ')} marked this`;
+                } else {
+                    square.title = bingoSquares[index];
+                }
+            });
+
+            // Update status with detailed player info
+            const statusText = document.getElementById('statusText');
+            if (gameState.winner) {
+                if (gameState.winner === currentPlayer) {
+                    statusText.textContent = '🎉 You won!';
+                } else {
+                    statusText.textContent = `😢 ${gameState.winner} won!`;
+                    if (!document.getElementById('loseMessage').style.display || document.getElementById('loseMessage').style.display === 'none') {
+                        showLoseMessage();
+                    }
+                }
+            } else {
+                const playerCount = Object.keys(gameState.players).length;
+                const otherPlayers = Object.keys(gameState.players).filter(p => p !== currentPlayer);
+                
+                if (playerCount === 1) {
+                    statusText.textContent = '⏳ Waiting for other players to join...';
+                } else if (playerCount === 2) {
+                    statusText.textContent = `🎮 Playing against ${otherPlayers[0]}`;
+                } else {
+                    statusText.textContent = `🎮 Playing with ${playerCount - 1} other players`;
+                }
+            }
+        }
+
+        function checkForWin(markedSquares) {
+            const winPatterns = [
+                // Rows
+                [0, 1, 2, 3, 4], [5, 6, 7, 8, 9], [10, 11, 12, 13, 14], [15, 16, 17, 18, 19], [20, 21, 22, 23, 24],
+                // Columns  
+                [0, 5, 10, 15, 20], [1, 6, 11, 16, 21], [2, 7, 12, 17, 22], [3, 8, 13, 18, 23], [4, 9, 14, 19, 24],
+                // Diagonals
+                [0, 6, 12, 18, 24], [4, 8, 12, 16, 20]
+            ];
+
+            return winPatterns.some(pattern => 
+                pattern.every(index => markedSquares.includes(index))
+            );
+        }
+
+        function showWinMessage() {
+            document.getElementById('overlay').style.display = 'block';
+            document.getElementById('winMessage').style.display = 'block';
+        }
+
+        function showLoseMessage() {
+            document.getElementById('overlay').style.display = 'block';
+            document.getElementById('loseMessage').style.display = 'block';
+        }
+
+        function hideMessages() {
+            document.getElementById('overlay').style.display = 'none';
+            document.getElementById('winMessage').style.display = 'none';
+            document.getElementById('loseMessage').style.display = 'none';
+        }
+
+        function resetGame() {
+            gameState.players = {};
+            gameState.winner = null;
+            gameState.players[currentPlayer] = { markedSquares: [], isWinner: false, joinedAt: Date.now() };
+            
+            saveGameState();
+            broadcastGameUpdate();
+            updateUI();
+            hideMessages();
+            showNotification('Game reset!');
+        }
+
+        function leaveGame() {
+            if (broadcastChannel) {
+                broadcastChannel.close();
+            }
+            
+            if (syncInterval) {
+                clearInterval(syncInterval);
+            }
+            
+            // Remove player from game
+            if (gameState.players[currentPlayer]) {
+                delete gameState.players[currentPlayer];
+                saveGameState();
+            }
+            
+            // Reset and go back to setup
+            document.getElementById('gameContainer').style.display = 'none';
+            document.getElementById('gameSetup').style.display = 'block';
+            goBackToModeSelection();
+            
+            currentPlayer = null;
+            currentGameId = null;
+            showNotification('Left the game');
+        }
+
+        // Auto-convert game code to uppercase
+        document.getElementById('gameCode').addEventListener('input', function(e) {
+            e.target.value = e.target.value.toUpperCase();
+        });
+
+        // Enter key handlers
+        document.getElementById('createPlayerName').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') createGame();
+        });
+
+        document.getElementById('joinPlayerName').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') document.getElementById('gameCode').focus();
+        });
+
+        document.getElementById('gameCode').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') joinGame();
+        });
+    </script>
+</body>
+</html>
