@@ -117,7 +117,6 @@
             color: white;
             border-radius: 20px;
             font-size: 0.9rem;
-            position: relative;
         }
 
         .player-status.current-player {
@@ -267,7 +266,6 @@
             transition: all 0.3s ease;
             padding: 8px;
             background: white;
-            position: relative;
         }
 
         .bingo-square:hover {
@@ -276,9 +274,9 @@
         }
 
         .bingo-square.my-mark {
-            background: #f5a67a;
+            background: #4CAF50;
             color: white;
-            border-color: #e89660;
+            border-color: #388E3C;
         }
 
         .bingo-square.opponent-mark {
@@ -288,7 +286,7 @@
         }
 
         .bingo-square.both-marked {
-            background: linear-gradient(45deg, #f5a67a 50%, #ff6b6b 50%);
+            background: linear-gradient(45deg, #4CAF50 50%, #ff6b6b 50%);
             color: white;
             border-color: #333;
         }
@@ -333,6 +331,16 @@
             height: 100%;
             background: rgba(0,0,0,0.5);
             z-index: 999;
+        }
+
+        .debug-info {
+            background: #f0f0f0;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-size: 0.8rem;
+            color: #666;
+            font-family: monospace;
         }
 
         @media (max-width: 768px) {
@@ -421,14 +429,18 @@
             <div class="player-info">
                 <div class="player-name" id="currentPlayerName"></div>
                 <div class="game-id" id="currentGameId"></div>
-                <div class="sync-status" id="syncStatus">🟢 Connected</div>
+                <div class="sync-status" id="syncStatus">🔥 Connecting...</div>
                 <div class="players-list" id="playersList"></div>
             </div>
+
+            <!-- Debug info for testing -->
+            <div class="debug-info" id="debugInfo" style="display: none;"></div>
 
             <div class="game-controls">
                 <button class="btn btn-small" onclick="resetGame()">🔄 Reset Game</button>
                 <button class="btn btn-small" onclick="leaveGame()">🚪 Leave Game</button>
-                <div class="status" id="statusText">Waiting for players...</div>
+                <button class="btn btn-small" onclick="toggleDebug()">🔍 Debug</button>
+                <div class="status" id="statusText">Waiting for Firebase...</div>
             </div>
 
             <div class="bingo-grid" id="bingoGrid"></div>
@@ -452,6 +464,45 @@
     <!-- Notification popup -->
     <div class="notification" id="notification"></div>
 
+    <!-- Firebase SDK -->
+    <script type="module">
+        // Import Firebase SDKs
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-app.js";
+        import { getDatabase, ref, set, onValue, remove } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-database.js";
+
+        // Firebase configuration - Try different URL formats
+        const firebaseConfig = {
+            apiKey: "AIzaSyCRGQDgi2B4T5R-HPkx__fWvj4rh0DUiZE",
+            authDomain: "as-mobiles-inventory.firebaseapp.com",
+            // Try this URL first (most common for new projects):
+            databaseURL: "https://as-mobiles-inventory-default-rtdb.firebaseio.com/",
+            // If above doesn't work, try these alternatives:
+            // databaseURL: "https://as-mobiles-inventory.firebaseio.com/",
+            // databaseURL: "https://as-mobiles-inventory-default-rtdb.asia-southeast1.firebasedatabase.app/",
+            projectId: "as-mobiles-inventory",
+            storageBucket: "as-mobiles-inventory.firebasestorage.app",
+            messagingSenderId: "346993698201",
+            appId: "1:346993698201:web:c111b6edff1c79706c9f08",
+            measurementId: "G-QK8FG5PCTW"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const database = getDatabase(app);
+
+        // Make Firebase available globally
+        window.firebaseDB = database;
+        window.firebaseRef = ref;
+        window.firebaseSet = set;
+        window.firebaseOnValue = onValue;
+        window.firebaseRemove = remove;
+        
+        // Initialize game after Firebase is ready
+        console.log('🔥 Firebase initialized successfully!');
+        window.firebaseReady = true;
+        window.initializeGame();
+    </script>
+
     <script>
         let currentPlayer = null;
         let currentGameId = null;
@@ -461,8 +512,8 @@
             winner: null,
             lastUpdate: Date.now()
         };
-        let broadcastChannel = null;
-        let syncInterval = null;
+        let firebaseListener = null;
+        let debugMode = false;
 
         const bingoSquares = [
             "100+ GitHub Commits",
@@ -492,6 +543,12 @@
             "Used Hugging Face"
         ];
 
+        // Initialize game when Firebase is ready
+        window.initializeGame = function() {
+            console.log('🎮 Game initialized!');
+            updateSyncStatus(true);
+        };
+
         function showNotification(message, isError = false) {
             const notification = document.getElementById('notification');
             notification.textContent = message;
@@ -500,6 +557,39 @@
             setTimeout(() => {
                 notification.classList.remove('show');
             }, 3000);
+        }
+
+        function toggleDebug() {
+            debugMode = !debugMode;
+            const debugInfo = document.getElementById('debugInfo');
+            debugInfo.style.display = debugMode ? 'block' : 'none';
+            if (debugMode) updateDebugInfo();
+        }
+
+        function updateDebugInfo() {
+            if (!debugMode) return;
+            const debugInfo = document.getElementById('debugInfo');
+            debugInfo.innerHTML = `
+                <strong>🔥 Firebase Debug Info:</strong><br>
+                🌐 Firebase: ${window.firebaseReady ? '✅ Connected' : '❌ Disconnected'}<br>
+                👤 Player: ${currentPlayer || 'None'}<br>
+                🎮 Game ID: ${currentGameId || 'None'}<br>
+                👥 Players: ${JSON.stringify(Object.keys(gameState.players))}<br>
+                🟩 My squares: ${JSON.stringify(gameState.players[currentPlayer]?.markedSquares || [])}<br>
+                ⏰ Last update: ${new Date(gameState.lastUpdate).toLocaleTimeString()}<br>
+                👂 Listener: ${firebaseListener ? '✅ Active' : '❌ Inactive'}
+            `;
+        }
+
+        function updateSyncStatus(connected) {
+            const syncStatus = document.getElementById('syncStatus');
+            if (connected && window.firebaseReady) {
+                syncStatus.textContent = '🔥 Firebase Ready';
+                syncStatus.className = 'sync-status';
+            } else {
+                syncStatus.textContent = '⏳ Connecting...';
+                syncStatus.className = 'sync-status disconnected';
+            }
         }
 
         function showCreateGameForm() {
@@ -529,10 +619,89 @@
             return Math.random().toString(36).substring(2, 8).toUpperCase();
         }
 
+        function saveGameState() {
+            if (!window.firebaseReady || !currentGameId) {
+                console.error('Firebase not ready or no game ID');
+                return;
+            }
+            
+            try {
+                gameState.lastUpdate = Date.now();
+                const gameRef = window.firebaseRef(window.firebaseDB, `bingo-games/${currentGameId}`);
+                
+                console.log('💾 Saving game state:', gameState);
+                
+                window.firebaseSet(gameRef, gameState).then(() => {
+                    console.log('✅ Game saved to Firebase successfully');
+                    updateSyncStatus(true);
+                }).catch((error) => {
+                    console.error('❌ Firebase save error:', error);
+                    showNotification('Save failed: ' + error.message, true);
+                });
+                
+                if (debugMode) updateDebugInfo();
+            } catch (e) {
+                console.error('Failed to save to Firebase:', e);
+                showNotification('Save failed - check connection', true);
+            }
+        }
+
+        function setupFirebaseListener() {
+            if (!window.firebaseReady || !currentGameId) return;
+            
+            try {
+                // Remove existing listener
+                if (firebaseListener) {
+                    firebaseListener();
+                }
+                
+                const gameRef = window.firebaseRef(window.firebaseDB, `bingo-games/${currentGameId}`);
+                firebaseListener = window.firebaseOnValue(gameRef, (snapshot) => {
+                    const data = snapshot.val();
+                    if (data && data.lastUpdate > gameState.lastUpdate) {
+                        console.log('🔄 Firebase update received:', data);
+                        handleGameUpdate(data);
+                    }
+                });
+                
+                console.log('👂 Firebase listener setup for game:', currentGameId);
+                updateSyncStatus(true);
+            } catch (e) {
+                console.error('Failed to setup Firebase listener:', e);
+                showNotification('Real-time sync failed', true);
+            }
+        }
+
+        function handleGameUpdate(newGameState) {
+            const oldPlayers = Object.keys(gameState.players);
+            gameState = newGameState;
+            const newPlayers = Object.keys(gameState.players);
+            
+            // Check for new players
+            const joinedPlayers = newPlayers.filter(p => !oldPlayers.includes(p) && p !== currentPlayer);
+            if (joinedPlayers.length > 0) {
+                showNotification(`🎉 ${joinedPlayers.join(', ')} joined!`);
+            }
+            
+            // Check for players who left
+            const leftPlayers = oldPlayers.filter(p => !newPlayers.includes(p) && p !== currentPlayer);
+            if (leftPlayers.length > 0) {
+                showNotification(`👋 ${leftPlayers.join(', ')} left`, true);
+            }
+            
+            updateUI();
+        }
+
         function createGame() {
             const playerName = document.getElementById('createPlayerName').value.trim();
             if (!playerName) {
                 showNotification('Please enter your name', true);
+                return;
+            }
+
+            if (!window.firebaseReady) {
+                showNotification('Connecting to Firebase...', true);
+                setTimeout(createGame, 1000);
                 return;
             }
 
@@ -552,9 +721,9 @@
             };
 
             saveGameState();
-            setupBroadcastChannel();
+            setupFirebaseListener();
             startGame();
-            showNotification(`Game created! Code: ${currentGameId}`);
+            showNotification(`🎮 Game created! Code: ${currentGameId}`);
         }
 
         function joinGame() {
@@ -562,7 +731,7 @@
             const gameCode = document.getElementById('gameCode').value.trim().toUpperCase();
             
             if (!playerName || !gameCode) {
-                showNotification('Please enter both your name and game code', true);
+                showNotification('Please enter name and game code', true);
                 return;
             }
 
@@ -571,170 +740,55 @@
                 return;
             }
 
+            if (!window.firebaseReady) {
+                showNotification('Connecting to Firebase...', true);
+                setTimeout(joinGame, 1000);
+                return;
+            }
+
             currentPlayer = playerName;
             currentGameId = gameCode;
 
-            // Try to load existing game
-            const existingGame = loadGameState();
-            if (existingGame) {
-                gameState = existingGame;
-                showNotification(`Joining game ${currentGameId}...`);
+            // Check if game exists
+            const gameRef = window.firebaseRef(window.firebaseDB, `bingo-games/${currentGameId}`);
+            window.firebaseOnValue(gameRef, (snapshot) => {
+                const existingGame = snapshot.val();
                 
-                // Add current player if not already in game
-                if (!gameState.players[currentPlayer]) {
+                if (existingGame) {
+                    gameState = existingGame;
+                    
+                    if (!gameState.players[currentPlayer]) {
+                        gameState.players[currentPlayer] = { 
+                            markedSquares: [], 
+                            isWinner: false, 
+                            joinedAt: Date.now() 
+                        };
+                        
+                        const otherCount = Object.keys(gameState.players).length - 1;
+                        showNotification(`🎉 Joined! ${otherCount} other player(s) in game`);
+                    } else {
+                        showNotification(`🔄 Rejoined game ${currentGameId}!`);
+                    }
+                } else {
+                    // Create new game
+                    gameState = {
+                        players: {},
+                        gameStarted: true,
+                        winner: null,
+                        lastUpdate: Date.now()
+                    };
                     gameState.players[currentPlayer] = { 
                         markedSquares: [], 
                         isWinner: false, 
                         joinedAt: Date.now() 
                     };
-                    showNotification(`Successfully joined game with ${Object.keys(gameState.players).length - 1} other player(s)!`);
-                } else {
-                    showNotification(`Rejoined game ${currentGameId}!`);
+                    showNotification(`🆕 Created new game ${currentGameId}`);
                 }
-            } else {
-                // Game doesn't exist, create it
-                gameState = {
-                    players: {},
-                    gameStarted: true,
-                    winner: null,
-                    lastUpdate: Date.now()
-                };
-                gameState.players[currentPlayer] = { 
-                    markedSquares: [], 
-                    isWinner: false, 
-                    joinedAt: Date.now() 
-                };
-                showNotification(`Game ${currentGameId} not found, creating new one`);
-            }
 
-            saveGameState();
-            setupBroadcastChannel();
-            startGame();
-            
-            // Force immediate sync check
-            setTimeout(syncGameState, 100);
-        }
-
-        function setupBroadcastChannel() {
-            if (broadcastChannel) {
-                broadcastChannel.close();
-            }
-            
-            // BroadcastChannel for same-device sync only
-            try {
-                broadcastChannel = new BroadcastChannel(`bingo-game-${currentGameId}`);
-                broadcastChannel.onmessage = (event) => {
-                    const { type, data } = event.data;
-                    
-                    if (type === 'gameUpdate') {
-                        handleGameUpdate(data);
-                    } else if (type === 'playerJoined') {
-                        if (data.playerName !== currentPlayer) {
-                            showNotification(`${data.playerName} joined the game!`);
-                            gameState.players[data.playerName] = data.playerData;
-                            saveGameState();
-                            updateUI();
-                        }
-                    }
-                };
-            } catch (e) {
-                console.log('BroadcastChannel not supported, using localStorage polling only');
-            }
-
-            // Primary sync mechanism - localStorage polling
-            if (syncInterval) clearInterval(syncInterval);
-            syncInterval = setInterval(syncGameState, 500); // Check every 500ms for faster sync
-        }
-
-        function handleGameUpdate(newGameState) {
-            const oldPlayers = Object.keys(gameState.players);
-            const oldPlayerCount = oldPlayers.length;
-            
-            gameState = newGameState;
-            const newPlayers = Object.keys(gameState.players);
-            const newPlayerCount = newPlayers.length;
-            
-            // Check for new players
-            const joinedPlayers = newPlayers.filter(p => !oldPlayers.includes(p) && p !== currentPlayer);
-            if (joinedPlayers.length > 0) {
-                showNotification(`${joinedPlayers.join(', ')} joined the game!`);
-            }
-            
-            // Check for players who left
-            const leftPlayers = oldPlayers.filter(p => !newPlayers.includes(p) && p !== currentPlayer);
-            if (leftPlayers.length > 0) {
-                showNotification(`${leftPlayers.join(', ')} left the game`, true);
-            }
-            
-            updateUI();
-        }
-
-        function broadcastGameUpdate() {
-            gameState.lastUpdate = Date.now();
-            saveGameState(); // Save first
-            
-            // Then broadcast if available
-            if (broadcastChannel) {
-                try {
-                    broadcastChannel.postMessage({
-                        type: 'gameUpdate',
-                        data: gameState
-                    });
-                } catch (e) {
-                    console.log('Broadcast failed, relying on localStorage sync');
-                }
-            }
-        }
-
-        function broadcastPlayerJoined() {
-            saveGameState(); // Save first
-            
-            if (broadcastChannel) {
-                try {
-                    broadcastChannel.postMessage({
-                        type: 'playerJoined',
-                        data: {
-                            playerName: currentPlayer,
-                            playerData: gameState.players[currentPlayer]
-                        }
-                    });
-                } catch (e) {
-                    console.log('Broadcast failed, relying on localStorage sync');
-                }
-            }
-        }
-
-        function saveGameState() {
-            gameState.lastUpdate = Date.now();
-            localStorage.setItem(`bingo-game-${currentGameId}`, JSON.stringify(gameState));
-        }
-
-        function loadGameState() {
-            const saved = localStorage.getItem(`bingo-game-${currentGameId}`);
-            return saved ? JSON.parse(saved) : null;
-        }
-
-        function syncGameState() {
-            const latestState = loadGameState();
-            if (latestState && latestState.lastUpdate > gameState.lastUpdate) {
-                console.log('Syncing game state...', latestState);
-                handleGameUpdate(latestState);
-                updateSyncStatus(true);
-            } else {
-                // No updates, but we're still connected
-                updateSyncStatus(true);
-            }
-        }
-
-        function updateSyncStatus(connected) {
-            const syncStatus = document.getElementById('syncStatus');
-            if (connected) {
-                syncStatus.textContent = '🟢 Connected';
-                syncStatus.className = 'sync-status';
-            } else {
-                syncStatus.textContent = '🔴 Disconnected';
-                syncStatus.className = 'sync-status disconnected';
-            }
+                saveGameState();
+                setupFirebaseListener();
+                startGame();
+            }, { onlyOnce: true });
         }
 
         function startGame() {
@@ -767,30 +821,44 @@
             if (gameState.winner) return;
 
             const playerData = gameState.players[currentPlayer];
+            if (!playerData) {
+                console.error('Player data not found:', currentPlayer);
+                showNotification('Player data error - try rejoining', true);
+                return;
+            }
+            
+            // Ensure markedSquares array exists
+            if (!playerData.markedSquares) {
+                playerData.markedSquares = [];
+            }
+            
             const markedSquares = playerData.markedSquares;
             
             if (markedSquares.includes(index)) {
                 // Unmark square
                 const squareIndex = markedSquares.indexOf(index);
                 markedSquares.splice(squareIndex, 1);
+                console.log('🟩 Unmarked square:', index);
             } else {
                 // Mark square
                 markedSquares.push(index);
+                console.log('🟩 Marked square:', index);
             }
 
-            saveGameState();
-            broadcastGameUpdate();
+            // Immediately update UI
+            updateUI();
             
+            // Save to Firebase
+            saveGameState();
+            
+            // Check for win
             if (checkForWin(markedSquares)) {
                 gameState.winner = currentPlayer;
                 gameState.players[currentPlayer].isWinner = true;
                 saveGameState();
-                broadcastGameUpdate();
                 showWinMessage();
                 showNotification('🎉 You won!');
             }
-            
-            updateUI();
         }
 
         function updateUI() {
@@ -817,24 +885,26 @@
                 playersList.appendChild(playerDiv);
             }
 
-            // Update grid - FIXED VISUAL FEEDBACK
+            // Update grid
             const squares = document.querySelectorAll('.bingo-square');
             squares.forEach((square, index) => {
                 square.classList.remove('my-mark', 'opponent-mark', 'both-marked');
                 
-                let myMark = gameState.players[currentPlayer]?.markedSquares.includes(index) || false;
+                // Safe check for current player data
+                const currentPlayerData = gameState.players[currentPlayer];
+                let myMark = currentPlayerData && currentPlayerData.markedSquares && currentPlayerData.markedSquares.includes(index) || false;
                 let opponentMark = false;
                 let opponentNames = [];
                 
-                // Check if any opponent marked this square
+                // Check opponents
                 for (const [playerName, playerData] of Object.entries(gameState.players)) {
-                    if (playerName !== currentPlayer && playerData.markedSquares.includes(index)) {
+                    if (playerName !== currentPlayer && playerData && playerData.markedSquares && playerData.markedSquares.includes(index)) {
                         opponentMark = true;
                         opponentNames.push(playerName);
                     }
                 }
                 
-                // Apply appropriate class with better visual distinction
+                // Apply visual feedback
                 if (myMark && opponentMark) {
                     square.classList.add('both-marked');
                     square.title = `You and ${opponentNames.join(', ')} marked this`;
@@ -849,7 +919,7 @@
                 }
             });
 
-            // Update status with detailed player info
+            // Update status
             const statusText = document.getElementById('statusText');
             if (gameState.winner) {
                 if (gameState.winner === currentPlayer) {
@@ -865,13 +935,15 @@
                 const otherPlayers = Object.keys(gameState.players).filter(p => p !== currentPlayer);
                 
                 if (playerCount === 1) {
-                    statusText.textContent = '⏳ Waiting for other players to join...';
+                    statusText.textContent = '⏳ Waiting for other players... Share your game code!';
                 } else if (playerCount === 2) {
                     statusText.textContent = `🎮 Playing against ${otherPlayers[0]}`;
                 } else {
                     statusText.textContent = `🎮 Playing with ${playerCount - 1} other players`;
                 }
             }
+
+            if (debugMode) updateDebugInfo();
         }
 
         function checkForWin(markedSquares) {
@@ -911,25 +983,28 @@
             gameState.players[currentPlayer] = { markedSquares: [], isWinner: false, joinedAt: Date.now() };
             
             saveGameState();
-            broadcastGameUpdate();
             updateUI();
             hideMessages();
-            showNotification('Game reset!');
+            showNotification('🔄 Game reset!');
         }
 
         function leaveGame() {
-            if (broadcastChannel) {
-                broadcastChannel.close();
+            if (firebaseListener) {
+                firebaseListener();
+                firebaseListener = null;
             }
             
-            if (syncInterval) {
-                clearInterval(syncInterval);
-            }
-            
-            // Remove player from game
-            if (gameState.players[currentPlayer]) {
+            // Remove player from Firebase
+            if (window.firebaseReady && currentGameId && gameState.players[currentPlayer]) {
                 delete gameState.players[currentPlayer];
-                saveGameState();
+                
+                // If no players left, remove the entire game
+                if (Object.keys(gameState.players).length === 0) {
+                    const gameRef = window.firebaseRef(window.firebaseDB, `bingo-games/${currentGameId}`);
+                    window.firebaseRemove(gameRef);
+                } else {
+                    saveGameState();
+                }
             }
             
             // Reset and go back to setup
@@ -939,7 +1014,7 @@
             
             currentPlayer = null;
             currentGameId = null;
-            showNotification('Left the game');
+            showNotification('👋 Left the game');
         }
 
         // Auto-convert game code to uppercase
@@ -959,6 +1034,12 @@
         document.getElementById('gameCode').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') joinGame();
         });
+
+        // Initialize when page loads
+        if (!window.firebaseReady) {
+            // Firebase will call initializeGame when ready
+            console.log('⏳ Waiting for Firebase...');
+        }
     </script>
 </body>
 </html>
